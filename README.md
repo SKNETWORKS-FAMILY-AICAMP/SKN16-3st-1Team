@@ -54,6 +54,9 @@ SKN 16기 3차 단위프로젝트 **RAG 강의 자료기반 AI Chatbot**
 
 ```bash
 # 1. 환경 설정
+cp .env.example .env
+# Windows의 경우 `copy .env.example .env`를 실행하세요.
+
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
