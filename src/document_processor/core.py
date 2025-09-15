@@ -10,9 +10,7 @@ import os
 import time
 from pathlib import Path
 
-from document_processor.errors import UnsupportedFileFormatError
-from document_processor.notebook_processor import NotebookProcessor
-from document_processor.pdf_processor import PDFProcessor
+from .errors import UnsupportedFileFormatError
 
 
 @dataclass
@@ -76,28 +74,40 @@ class DocumentProcessor(ABC):
 class DocumentProcessorFactory:
     """Factory for creating document processors"""
 
-    _processors = {
-        '.pdf': PDFProcessor,
-        '.ipynb': NotebookProcessor
-    }
+    _processors = {}
+
+    @classmethod
+    def _get_processors(cls):
+        if not cls._processors:
+            # Import here to avoid circular imports
+            from .pdf_processor import PDFProcessor
+            from .notebook_processor import NotebookProcessor
+            cls._processors = {
+                '.pdf': PDFProcessor,
+                '.ipynb': NotebookProcessor
+            }
+        return cls._processors
 
     @classmethod
     def create_processor(cls, file_path: str) -> DocumentProcessor:
         """Create appropriate processor for file"""
+        processors = cls._get_processors()
         file_ext = Path(file_path).suffix.lower()
 
-        if file_ext not in cls._processors:
+        if file_ext not in processors:
             raise UnsupportedFileFormatError(f"Unsupported file format: {file_ext}")
 
-        processor_class = cls._processors[file_ext]
+        processor_class = processors[file_ext]
         return processor_class()
 
     @classmethod
     def get_supported_formats(cls) -> List[str]:
         """Get all supported file formats"""
-        return list(cls._processors.keys())
+        processors = cls._get_processors()
+        return list(processors.keys())
 
     @classmethod
     def register_processor(cls, file_extension: str, processor_class: type):
         """Register a new processor for a file extension"""
-        cls._processors[file_extension] = processor_class    
+        processors = cls._get_processors()
+        processors[file_extension] = processor_class    

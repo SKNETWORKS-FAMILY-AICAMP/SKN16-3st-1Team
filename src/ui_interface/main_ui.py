@@ -3,8 +3,10 @@ import torch
 import torch.nn as nn
 import random
 
+from ..chat_engine.rag_pipeline import RAGPipeline
 
-def main_ui():
+
+def main_ui(pipeline: RAGPipeline):
     print("여기다가 코드를 넣어주세요")
 
     # 코드와 설명 (이전과 동일)
