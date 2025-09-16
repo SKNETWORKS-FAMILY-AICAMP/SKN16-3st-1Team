@@ -1,50 +1,20 @@
-# Integrated RAG AI LLM + Advanced Retrieval System Dependencies
-# Integration: 001-rag-ai-llm (Foundation) + 002-1-retriever-bm25 (Advanced Search)
-
-# Core Framework (001 Foundation)
-langchain>=0.1.0
-langchain-community>=0.0.10
-langchain-openai>=0.0.5
-
-# Vector Database (001 Foundation)
-chromadb>=0.4.0
-
-# UI Framework (001 Foundation)
-gradio>=4.0.0
-
-# Document Processing (001 Foundation)
-PyMuPDF>=1.23.0
-pdfplumber>=0.9.0
-nbformat>=5.7.0
-
-# Machine Learning (001 Foundation + 002 Extensions)
-sentence-transformers>=2.2.0
-transformers>=4.36.0
-torch>=2.0.0
-huggingface-hub>=0.19.0
-openai>=1.0.0
-
-# Advanced Retrieval (002 New Features)
-rank-bm25>=0.2.2  # BM25 keyword search
-# Note: dragonkue/bge-reranker-v2-m3-ko will be loaded via transformers
-
-# PDF Generation
-reportlab>=4.0.0
-fpdf2>=2.7.0
-
-# Utilities
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-
-# Testing
-pytest>=7.0.0
-pytest-cov>=4.0.0
-pytest-asyncio>=0.21.0
-
-# Development
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Logging and Monitoring
-structlog>=23.0.0
+langchain
+langchain-community
+langchain-chroma
+langchain-huggingface
+langchain-openai
+gradio
+sentence-transformers
+rank-bm25
+transformers
+torch
+torchvision
+torchaudio
+chromadb
+numpy
+pandas
+jupyter
+nbformat
+pymupdf
+python-dotenv
+openai
