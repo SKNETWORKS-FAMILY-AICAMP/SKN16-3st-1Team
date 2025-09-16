@@ -18,3 +18,5 @@ nbformat
 pymupdf
 python-dotenv
 openai
+dateparser
+pillow
