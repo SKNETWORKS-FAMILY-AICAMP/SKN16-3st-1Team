@@ -18,3 +18,4 @@ data/conversations/
 *.sqlite3
 *.bin
 *.pickle
+*.pkl

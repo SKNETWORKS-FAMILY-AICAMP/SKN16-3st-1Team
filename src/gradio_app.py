@@ -19,16 +19,22 @@ from rag_system import RAGSystem
 class GradioRAGApp:
     """Gradio RAG 애플리케이션 클래스"""
 
-    def __init__(self):
+    def __init__(self, use_reranking: bool = True):
         """초기화"""
         self.rag_system = None
+        self.use_reranking = use_reranking
         self._initialize_system()
 
     def _initialize_system(self):
         """RAG 시스템 초기화"""
         try:
-            self.rag_system = RAGSystem()
-            print("RAG 시스템이 초기화되었습니다.")
+            self.rag_system = RAGSystem(
+                use_reranking=self.use_reranking,
+                rerank_model="dragonkue/bge-reranker-v2-m3-ko",
+                rerank_top_k=20
+            )
+            rerank_status = "활성화" if self.use_reranking else "비활성화"
+            print(f"RAG 시스템이 초기화되었습니다. (Re-ranking: {rerank_status})")
         except Exception as e:
             print(f"RAG 시스템 초기화 중 오류: {e}")
 

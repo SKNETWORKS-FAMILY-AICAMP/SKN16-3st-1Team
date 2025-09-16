@@ -22,6 +22,14 @@ from langchain.schema import Document
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
+# --- Re-ranking 모델 임포트 ---
+try:
+    from sentence_transformers import CrossEncoder
+    RERANKER_AVAILABLE = True
+except ImportError:
+    RERANKER_AVAILABLE = False
+    CrossEncoder = None
+
 # --- BM25 / Ensemble 호환 임포트 (버전별 안전처리) ---
 BM25Retriever = None
 EnsembleRetriever = None
@@ -50,10 +58,28 @@ class RAGSystem:
         db_path: str = "./chroma_db",
         embedding_model: str = "google/embeddinggemma-300m",
         llm_model: str = "gpt-4o-mini",
-        k: int = 5
+        k: int = 5,
+        use_reranking: bool = True,
+        rerank_model: str = "dragonkue/bge-reranker-v2-m3-ko",
+        rerank_top_k: int = 20
     ):
         self.db_path = db_path
         self.k = k
+        self.use_reranking = use_reranking
+        self.rerank_top_k = rerank_top_k
+
+        # Re-ranking 모델 초기화
+        self.reranker = None
+        if self.use_reranking and RERANKER_AVAILABLE:
+            try:
+                print(f"Re-ranking 모델 로딩 중: {rerank_model}")
+                self.reranker = CrossEncoder(rerank_model)
+                print("Re-ranking 모델이 성공적으로 로드되었습니다.")
+            except Exception as e:
+                print(f"Re-ranking 모델 로드 실패: {e}")
+                self.reranker = None
+        elif self.use_reranking and not RERANKER_AVAILABLE:
+            print("Warning: sentence-transformers가 설치되지 않아 re-ranking을 사용할 수 없습니다.")
 
         # 임베딩
         self.embeddings = HuggingFaceEmbeddings(
@@ -137,6 +163,37 @@ class RAGSystem:
             print(f"벡터 스토어 로드 중 오류: {e}")
 
     # -------------------------------
+    # Re-ranking 유틸
+    # -------------------------------
+    def _rerank_documents(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
+        """Re-rank documents using CrossEncoder model"""
+        if not self.reranker or not documents:
+            return documents
+
+        top_k = top_k or self.k
+
+        try:
+            # 쿼리-문서 쌍 생성
+            query_doc_pairs = [(query, doc.page_content) for doc in documents]
+
+            # Re-ranking 점수 계산
+            scores = self.reranker.predict(query_doc_pairs)
+
+            # 점수와 문서를 쌍으로 만들어 정렬
+            scored_docs = list(zip(scores, documents))
+            scored_docs.sort(key=lambda x: x[0], reverse=True)
+
+            # 상위 k개 문서 반환
+            reranked_docs = [doc for score, doc in scored_docs[:top_k]]
+
+            print(f"Re-ranking 완료: {len(documents)} -> {len(reranked_docs)} 문서")
+            return reranked_docs
+
+        except Exception as e:
+            print(f"Re-ranking 중 오류 발생: {e}")
+            return documents[:top_k]
+
+    # -------------------------------
     # 검색 유틸 (수동 앙상블 + 스코어링)
     # -------------------------------
     def _rank_combine(self, vdocs: List[Document], bdocs: List[Document], k: int) -> List[Document]:
@@ -182,14 +239,28 @@ class RAGSystem:
 
     def _search_once(self, query: str, k: int) -> List[Document]:
         try:
+            # 더 많은 문서를 가져와서 re-ranking할 준비
+            retrieve_k = self.rerank_top_k if self.use_reranking and self.reranker else k
+
             if self.ensemble_retriever:
-                return self.ensemble_retriever.invoke(query)[:k]
-            v = self.vector_retriever.invoke(query) if self.vector_retriever else []
-            b = self.bm25_retriever.invoke(query) if self.bm25_retriever else []
-            if v and b:
-                return self._rank_combine(v, b, k)
-            return (v or b)[:k]
-        except Exception:
+                docs = self.ensemble_retriever.invoke(query)[:retrieve_k]
+            else:
+                v = self.vector_retriever.invoke(query)[:retrieve_k] if self.vector_retriever else []
+                b = self.bm25_retriever.invoke(query)[:retrieve_k] if self.bm25_retriever else []
+                if v and b:
+                    docs = self._rank_combine(v, b, retrieve_k)
+                else:
+                    docs = (v or b)[:retrieve_k]
+
+            # Re-ranking 적용
+            if self.use_reranking and self.reranker and docs:
+                docs = self._rerank_documents(query, docs, k)
+            else:
+                docs = docs[:k]
+
+            return docs
+        except Exception as e:
+            print(f"검색 중 오류: {e}")
             return []
 
     def _multi_query_search(self, queries: List[str], k_each: int = 20, k_final: int = 20) -> List[Document]:
@@ -408,8 +479,19 @@ class RAGSystem:
         kk = k or self.k
         try:
             if filter_metadata:
-                return self.vectorstore.similarity_search(query, k=kk, filter=filter_metadata)
-            return self._search_once(query, kk)
+                # 필터가 있는 경우, re-ranking을 위해 더 많은 문서를 가져온 후 re-rank
+                retrieve_k = self.rerank_top_k if self.use_reranking and self.reranker else kk
+                docs = self.vectorstore.similarity_search(query, k=retrieve_k, filter=filter_metadata)
+
+                # Re-ranking 적용
+                if self.use_reranking and self.reranker and docs:
+                    docs = self._rerank_documents(query, docs, kk)
+                else:
+                    docs = docs[:kk]
+
+                return docs
+            else:
+                return self._search_once(query, kk)
         except Exception as e:
             print(f"문서 검색 중 오류: {e}")
             return []
@@ -658,21 +740,36 @@ class RAGSystem:
 
     def _strong_code_search(self, query: str, k: int = 20) -> List[Document]:
         intents = self._intent_models(query)
+
+        # Re-ranking을 고려한 검색 수 조정
+        search_k = max(40, k * 2) if self.use_reranking and self.reranker else max(20, k)
+
         # 1) 코드 메타 우선
-        code_first = self.search_documents(query, filter_metadata={"content_type": "code"}, k=max(20, k))
+        code_first = self.search_documents(query, filter_metadata={"content_type": "code"}, k=search_k)
+
         # 2) 의도 확장
         exp_qs = self._expand_queries(query)
-        broad = self._multi_query_search(exp_qs, k_each=20, k_final=120)
+        broad = self._multi_query_search(exp_qs, k_each=search_k, k_final=120)
+
         # 3) 코드만 + 합치기
         pool = []
         pool.extend(code_first)
         pool.extend([d for d in broad if (d.metadata or {}).get("content_type") == "code"])
         pool = self._dedup_docs(pool, limit=250)
+
         # 4) 의도 필터
         pool = self._filter_by_intent(pool, intents, min_keep=6)
+
         # 5) 스코어링
         scored = sorted(pool, key=lambda d: self._custom_doc_score(query, d, intents=intents, code_mode=True), reverse=True)
-        return scored[:k]
+
+        # 6) Re-ranking 적용 (스코어링 후)
+        if self.use_reranking and self.reranker and scored:
+            scored = self._rerank_documents(query, scored, k)
+        else:
+            scored = scored[:k]
+
+        return scored
 
     def get_code_snippets(self, query: str) -> List[Dict[str, Any]]:
         code_docs = self._strong_code_search(query, k=20)

@@ -5,6 +5,8 @@ Jupyter 노트북과 PDF 파일을 처리하여 Chroma DB에 임베딩하는 기
 
 import os
 import re
+import json
+import pickle
 from typing import List, Dict, Any
 
 import nbformat
@@ -216,6 +218,20 @@ class VectorDBBuilder:
                 return len(line.split()[0])
         return 0
 
+    def save_documents_for_bm25(self, documents: List[Document], db_path: str):
+        """
+        BM25용 원본 Documents를 별도 파일로 저장
+        """
+        os.makedirs(db_path, exist_ok=True)
+        documents_path = os.path.join(db_path, "documents_for_bm25.pkl")
+
+        try:
+            with open(documents_path, 'wb') as f:
+                pickle.dump(documents, f)
+            print(f"BM25용 Documents 저장 완료: {documents_path}")
+        except Exception as e:
+            print(f"Documents 저장 중 오류: {e}")
+
     def build_vector_db(self, data_dir: str, db_path: str = "./chroma_db") -> Chroma:
         """
         데이터 디렉토리의 모든 파일을 처리하여 벡터 DB 구축
@@ -245,7 +261,7 @@ class VectorDBBuilder:
                     documents = self.process_pdf(pdf_path)
                     all_documents.extend(documents)
 
-              
+
         if not all_documents:
             print("처리할 문서가 없습니다.")
             return None
@@ -266,6 +282,9 @@ class VectorDBBuilder:
                     filtered_documents.append(doc)
             else:
                 print(f"잘못된 문서 타입: {type(doc)}, 건너뛰기")
+
+        # BM25용 원본 Documents 저장
+        self.save_documents_for_bm25(all_documents, db_path)
 
         # Chroma DB에 저장
         print("벡터 DB 구축 중...")
