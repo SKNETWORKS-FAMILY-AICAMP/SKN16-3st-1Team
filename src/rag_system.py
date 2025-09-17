@@ -467,7 +467,7 @@ class RAGSystem:
         if t in lone_terms:
             qs += [f"{t} 코드", f"{t} 예제", f"{t} 구현", f"{t} 모델", f"{t} 학습"]
 
-        qs = list(dict.fromkeys([q for q in qs if q and q.strip()]))
+        qs = list(dict.fromkeys([q for q in qs if q and q.strip()]))[1:2]
         return qs
 
     # -------------------------------
