@@ -20,3 +20,9 @@ python-dotenv
 openai
 dateparser
 pillow
+# RAG 평가 시각화 의존성
+matplotlib
+seaborn
+plotly
+kaleido
+scikit-learn
