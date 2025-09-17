@@ -40,14 +40,15 @@ def main():
     print("=" * 50)
 
     if args.norerank:
-        print("✨ Re-ranking 기능이 활성화됩니다.")
-        print("   모델: dragonkue/bge-reranker-v2-m3-ko")
-    else:
-        print("📋 기본 검색 모드 (Re-ranking 비활성화)")
+        print("✨ Re-ranking 기능이 비활성화됩니다.")
         print("   Re-ranking을 사용하려면 --rerank 옵션을 추가하세요.")
+    else:
+        print("📋 기본 검색 모드 (Re-ranking 활성화)")
+        print("   모델: dragonkue/bge-reranker-v2-m3-ko")
+        
 
     # Gradio 애플리케이션 생성 및 실행
-    app = GradioRAGApp(use_reranking=args.norerank)
+    app = GradioRAGApp(use_reranking= not args.norerank)
 
     print(f"Gradio 웹 인터페이스를 시작합니다... (포트: {args.port})")
     print(f"브라우저에서 http://localhost:{args.port} 으로 접속하세요.")

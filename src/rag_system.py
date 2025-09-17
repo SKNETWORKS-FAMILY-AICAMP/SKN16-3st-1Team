@@ -61,7 +61,7 @@ class RAGSystem:
         k: int = 5,
         use_reranking: bool = True,
         rerank_model: str = "dragonkue/bge-reranker-v2-m3-ko",
-        rerank_top_k: int = 20
+        rerank_top_k: int = 10
     ):
         self.db_path = db_path
         self.k = k

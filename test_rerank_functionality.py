@@ -9,6 +9,10 @@ import os
 import sys
 from typing import List, Dict, Any
 from src.rag_system import RAGSystem
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 
 def test_reranking():
@@ -30,7 +34,7 @@ def test_reranking():
     rag_rerank = RAGSystem(
         use_reranking=True,
         rerank_model="dragonkue/bge-reranker-v2-m3-ko",
-        rerank_top_k=50,
+        rerank_top_k=10,
         k=5
     )
 
@@ -94,7 +98,7 @@ def test_code_search_reranking():
     rag_rerank = RAGSystem(
         use_reranking=True,
         rerank_model="dragonkue/bge-reranker-v2-m3-ko",
-        rerank_top_k=30,
+        rerank_top_k=10,
         k=3
     )
 
@@ -128,7 +132,7 @@ def test_qa_reranking():
     rag_rerank = RAGSystem(
         use_reranking=True,
         rerank_model="dragonkue/bge-reranker-v2-m3-ko",
-        rerank_top_k=50,
+        rerank_top_k=10,
         k=5
     )
 
