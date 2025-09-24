@@ -271,6 +271,20 @@ python main.py --port 8080
 2. "코드 설명: [선택한 코드]"
 ```
 
+
+## 💻 GRADIO 화면 구현
+
+<img width="1342" height="1114" alt="gradio 구현화면" src="https://github.com/user-attachments/assets/641c6dda-c1b5-41f7-a924-7de983096ec3" />
+
+
+
+- 왼쪽에 채팅창 구현
+- 오른쪽에 시스템 설정 창 구현
+- reranking 선택하여 적용 가능
+- LLM Temperature 값 0~1 사이 조절하여 답변 창의성 조정
+- 외부 LLM(open API) 선택하여 적용 가능
+- 문서 임계값 조정. 값이 작을수록 외부 LLM 사용 확률 증가
+
 ---
 
 ## 🔧 핵심 기능 상세
